@@ -167,17 +167,17 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
             fprintf('No selections made\n')
             return
         end
-        D = D(sel,:);
+        Dsub = D(sel,:);
     else
         if ~iscell(tags)
             tags = {tags};
         end
-        iname = ~ismember(D(:,3),tags);
-        itag = ~ismember(D(:,1),tags);
-        D(iname & itag,:) = [];
-        ntag = ~ismember(tags,D(:,1)) & ~ismember(tags,D(:,3));
+        iname = ismember(D(:,3),tags);
+        itag = ismember(D(:,1),tags);
+        Dsub = D(iname | itag,:);
+        ntag = ~ismember(tags,Dsub(:,1)) & ~ismember(tags,Dsub(:,3));
         tags(~ntag) = [];
-        ni = size(D,1)+1:size(D,1)+sum(ntag);
+        ni = size(Dsub,1)+1:size(Dsub,1)+sum(ntag);
         for n=1:length(ni)
             if ~contains(tags{n},',')
                 continue
@@ -187,12 +187,12 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
                     continue
                 end
             end
-            D(ni,1) = tags(n);
-            D(ni,2) = {'Unknown'};
-            D(ni,3) = {['tag_' strrep(strrep(strrep(tags{n},',','_'),'(',''),')','')]};
+            Dsub(ni,1) = tags(n);
+            Dsub(ni,2) = {'Unknown'};
+            Dsub(ni,3) = {['tag_' strrep(strrep(strrep(tags{n},',','_'),'(',''),')','')]};
         end
         
-        if isempty(D)
+        if isempty(Dsub)
             fprintf(2,'No matching entries found in dicom dictionary. fast_dcm_head aborted.\n');
             return
 %         else
@@ -264,14 +264,14 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
         %----------------------------------%
         % Loop through selected DICOM tags %
         %----------------------------------%
-        for h=1:size(D,1)
+        for h=1:size(Dsub,1)
             if exp
-                tag = [hex2dec(D{h,1}(4:5)) hex2dec(D{h,1}(2:3))...
-                    hex2dec(D{h,1}(9:10)) hex2dec(D{h,1}(7:8))...
-                    double(D{h,2})];
+                tag = [hex2dec(Dsub{h,1}(4:5)) hex2dec(Dsub{h,1}(2:3))...
+                    hex2dec(Dsub{h,1}(9:10)) hex2dec(Dsub{h,1}(7:8))...
+                    double(Dsub{h,2})];
             else
-                tag = [hex2dec(D{h,1}(4:5)) hex2dec(D{h,1}(2:3))...
-                    hex2dec(D{h,1}(9:10)) hex2dec(D{h,1}(7:8))];
+                tag = [hex2dec(Dsub{h,1}(4:5)) hex2dec(Dsub{h,1}(2:3))...
+                    hex2dec(Dsub{h,1}(9:10)) hex2dec(Dsub{h,1}(7:8))];
             end
             si = strfind(u8',tag)-1;
             if isempty(si)  % tag not found
@@ -286,7 +286,7 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
                     % first instance was a "false positive"
                     headval = 'Tag not found';
                 else
-                    switch D{h,2}
+                    switch Dsub{h,2}
                         case 'FD'
                             headval = fread(fa,l/8,'double');
                         case 'FL'
@@ -310,7 +310,7 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
                     end
                 end
             end            
-            sparsehead(f).(D{h,3}) = headval;
+            sparsehead(f).(Dsub{h,3}) = headval;
         end
         fclose(fa);
     end
