@@ -94,47 +94,48 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
     %------------------------------------------------%
     % Read MATLAB's DICOM dictionary into cell array %
     %------------------------------------------------%
-    % Set up the Import Options and import the data
-    opts = delimitedTextImportOptions("NumVariables", 4);
-    % Specify range and delimiter
-    opts.DataLines = [15, Inf];
-    opts.Delimiter = "\t";
-    % Specify column names and types
-    opts.VariableNames = ["VarName1", "VarName2", "VarName3", "VarName4"];
-    opts.VariableTypes = ["char", "char", "char", "char"];
-    % Specify file level properties
-    opts.ExtraColumnsRule = "ignore";
-    opts.EmptyLineRule = "read";
-    % Specify variable properties
-    opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4"], "WhitespaceRule", "preserve");
-    opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4"], "EmptyFieldRule", "auto");
-    % Import the data
-    try
-        D = readtable(fullfile(matlabroot,'toolbox','images','iptformats',...
-            'dicom-dict.txt'), opts);
-    catch
-        fprintf(2,['Fatal Error:\n'...
-            '\tCould not read MATLAB''s default dicom-dict.txt file\n'...
-            '\tfast_dcm_head aborted.\n']);
-        return
+    persistent D
+    if isempty(D)
+        % Set up the Import Options and import the data
+        opts = delimitedTextImportOptions("NumVariables", 4);
+        % Specify range and delimiter
+        opts.DataLines = [15, Inf];
+        opts.Delimiter = "\t";
+        % Specify column names and types
+        opts.VariableNames = ["VarName1", "VarName2", "VarName3", "VarName4"];
+        opts.VariableTypes = ["char", "char", "char", "char"];
+        % Specify file level properties
+        opts.ExtraColumnsRule = "ignore";
+        opts.EmptyLineRule = "read";
+        % Specify variable properties
+        opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4"], "WhitespaceRule", "preserve");
+        opts = setvaropts(opts, ["VarName1", "VarName2", "VarName3", "VarName4"], "EmptyFieldRule", "auto");
+        % Import the data
+        try
+            D = readtable(fullfile(matlabroot,'toolbox','images','iptformats',...
+                'dicom-dict.txt'), opts);
+        catch
+            fprintf(2,['Fatal Error:\n'...
+                '\tCould not read MATLAB''s default dicom-dict.txt file\n'...
+                '\tfast_dcm_head aborted.\n']);
+            return
+        end
+        % Convert to output type
+        D = table2cell(D);
+        
+        % Omit meta-information from options (meta-information always stored as
+        % explicit little-endian data and the way this code is currently
+        % written can't handle switching between implicit/explicit or
+        % big/little endian
+        D(strncmp(D(:,1),'(0002',5),:) = [];
+        % Omit dictionary entries with ambiguous group numbers from options
+        D(contains(D(:,1),'xx'),:) = [];
+        % Omit pixel data tags from options
+        D(strncmp(D(:,1),'(7FE',4),:) = [];
+        
+        % Make properties valid structure fieldnames for output
+        D(:,3) = cellfun(@(f) strrep(strrep(f,' ','_'),'-','_'),D(:,3),'Uni',0);
     end
-    % Convert to output type
-    D = table2cell(D);
-    
-    % Omit meta-information from options (meta-information always stored as
-    % explicit little-endian data and the way this code is currently
-    % written can't handle switching between implicit/explicit or
-    % big/little endian
-    D(strncmp(D(:,1),'(0002',5),:) = [];
-    % Omit dictionary entries with ambiguous group numbers from options
-    D(contains(D(:,1),'xx'),:) = [];
-    % Omit pixel data tags from options
-    D(strncmp(D(:,1),'(7FE',4),:) = [];
-    
-    
-    
-    % Make properties valid structure fieldnames for output
-    D(:,3) = cellfun(@(f) strrep(strrep(f,' ','_'),'-','_'),D(:,3),'Uni',0);
 
     %-------------------------------------------%
     % Prompt user for input variables if needed %

@@ -18,48 +18,59 @@ function T = dcm_inventory(root,pt_str,ses_str,scn_inc,scn_exc,meta)
     
     arguments
         root (1,1) string {mustBeFolder}
-        pt_str {mustBeTextScalar} = ""
-        ses_str {mustBeTextScalar} = ""
-        scn_inc (1,:) string = ""
+        pt_str {mustBeTextScalar} = "*"
+        ses_str {mustBeTextScalar} = "*"
+        scn_inc (1,:) string = "*"
         scn_exc (1,:) string = ""
         meta cell = {}
     end
 
-    rmdups = true;
+    pt_str = string(pt_str);
+    ses_str = string(ses_str);
+    scn_inc = string(scn_inc);
+    scn_exc = string(scn_exc);
 
-    if isempty(pt_str)
-        pt_str = "*";
-    elseif strcmp(pt_str,'**')
-        % Recursive wildcard, don't change
-    else
+    if ~ismember(pt_str,["*" "**"])
         pt_str = "*" + pt_str + "*";
     end
-    if isempty(ses_str)
-        ses_str = "*";
-    elseif strcmp(ses_str,'**')
-        % Recursive wildcard, don't change
-    else
+    if ~ismember(ses_str,["*" "**"])
         ses_str = "*" + ses_str + "*";
     end
     
     % Find all matching items
-    scns = [];
+    scns = struct([]);
     for s=1:length(scn_inc)
-        if isempty(scn_inc(s))
-            incs = "*";
-        else
+        if ~ismember(scn_inc(s),["*" "**"])
             incs = "*" + scn_inc(s) + "*";
+        else
+            incs = scn_inc(s);
         end
-        scns = cat(1,scns,dir(fullfile(root,pt_str,ses_str,incs)));
+        % Remove double recursive
+        srch = strrep(fullfile(root,pt_str,ses_str,incs),sprintf('**%s**',filesep),'**');
+        % Get list of matches
+        scns = cat(1,scns,dir(srch));
     end
+    if isempty(scns)
+        T = table();
+        fprintf(2,'No matching scans found\n')
+        return
+    end
+    % Remove files from list
+    scns(~vertcat(scns.isdir)) = [];
+    % Remove . and .. entries
+    scns(ismember({scns.name},[".",".."])) = [];
+    % Remove duplicate entries (matched to multiple snc_inc criteria)
+    [~,ia] = unique(fullfile({scns.folder},{scns.name}));
+    scns = scns(ia);
+    
     % Remove exclusion strings from list
-    if ~isempty(scn_exc) && all(~strcmp(scn_exc,""))
-        scns(contains({scns.name},scn_exc))=[];
+    if any(~ismember(scn_exc,""))
+        scns(any(contains({scns.name},scn_exc),2))=[];
     end
     % Remove files from list
     scns(~[scns.isdir]) = [];
     if isempty(scns)
-        T = [];
+        T = table();
         fprintf(2,'No matching scans found\n')
         return
     end
@@ -74,7 +85,7 @@ function T = dcm_inventory(root,pt_str,ses_str,scn_inc,scn_exc,meta)
     
     completeTransfer = false(height(T),1);
     if ~isempty(meta)
-        metadata = cell2struct(cell(1,length(meta)+1),cellstr(["Filename",meta]),2);
+        metadata(1:length(scns),1) = cell2struct(cell(1,length(meta)+1),cellstr(["Filename",meta]),2);
     end
     parfor n=1:length(scns)
         scndir = fullfile(scns(n).folder,scns(n).name);
