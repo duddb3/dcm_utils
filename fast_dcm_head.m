@@ -277,13 +277,15 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
             if isempty(si)  % tag not found
                 headval = 'Tag not found';
             else
-                si = si(1); % take only first instance
-                fseek(fa,si+tagL,'bof');
-                l = fread(fa,1,lp);
+                sii = 1;
+                l = inf;
+                while l>512 && sii<=length(si)
+                    fseek(fa,si(sii)+tagL,'bof');
+                    l = fread(fa,1,lp);
+                    sii = sii+1;
+                end
                 if l>512
-                    % if length is >512 bytes, probably is the case that
-                    % multiple matches to the search tag were found and the
-                    % first instance was a "false positive"
+                    % if length is >512 bytes, match was a "false positive"
                     headval = 'Tag not found';
                 else
                     switch Dsub{h,2}
