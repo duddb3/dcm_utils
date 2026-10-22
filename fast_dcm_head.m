@@ -5,7 +5,7 @@ function sparsehead = fast_dcm_head(dcmdir,tags,N)
 % Software provided with no warranty or guarantee
 %
 % Created by: Jon Dudley (jonathan.dudley@cchmc.org)
-% Last modified: 2021-07-06
+% Last modified: 2026-10-16
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~%
 %
 % Function to scan a directory of DICOM files and return a structure

@@ -65,7 +65,7 @@ function T = dcm_inventory(root,pt_str,ses_str,scn_inc,scn_exc,meta)
     
     % Remove exclusion strings from list
     if any(~ismember(scn_exc,""))
-        scns(any(contains({scns.name},scn_exc),2))=[];
+        scns(contains({scns.name},scn_exc))=[];
     end
     % Remove files from list
     scns(~[scns.isdir]) = [];
